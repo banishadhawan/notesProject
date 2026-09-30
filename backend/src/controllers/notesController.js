@@ -2,7 +2,20 @@ import Note from '../models/Note.js'
 
 export async function getAllNotes (req, res) {
     try{
-        const notes = await Note.find({ user: req.user._id }).sort({createdAt: -1}); // newset first
+        const search = typeof req.query.search === 'string'
+            ? req.query.search.trim().slice(0, 100)
+            : '';
+        const noteFilter = { user: req.user._id };
+
+        if (search) {
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            noteFilter.$or = [
+                { title: { $regex: escapedSearch, $options: 'i' } },
+                { content: { $regex: escapedSearch, $options: 'i' } },
+            ];
+        }
+
+        const notes = await Note.find(noteFilter).sort({createdAt: -1}); // newset first
         res.status(200).json(notes);
     } catch(error) {
         console.error("Error fetching notes:", error);
